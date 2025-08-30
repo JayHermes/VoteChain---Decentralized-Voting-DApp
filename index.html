@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoteChain - Decentralized Voting</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+            color: white;
+            padding: 60px 0;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #fff, #a8edea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            opacity: 0.95;
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 35px 70px rgba(0,0,0,0.2);
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            text-align: center;
+            grid-column: span 2;
+        }
+
+        .status-card.connected {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        }
+
+        .voting-section {
+            grid-column: span 2;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 18px 35px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 15px 0;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .vote-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vote-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .vote-option:hover::before {
+            left: 100%;
+        }
+
+        .vote-option:hover {
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        }
+
+        .vote-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #e8f2ff, #d6e7ff);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .vote-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .vote-emoji {
+            font-size: 2.5rem;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .vote-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .vote-count {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2, #ff6b6b);
+            border-radius: 6px;
+            transition: width 0.8s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .info-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-card p {
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .feature-item .icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .contract-address {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            word-break: break-all;
+            margin: 20px 0;
+            border: 2px solid #dee2e6;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .success {
+            background: linear-gradient(135deg, #4ecdc4, #26a69a);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+        }
+
+        .info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin: 30px 0;
+            color: white;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            opacity: 0.8;
+        }
+
+        .why-shardeum {
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            color: white;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .benefit-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .benefit-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1 class="pulse">🗳️ VoteChain</h1>
+            <p class="tagline">Next-Generation Decentralized Voting Platform</p>
+            <p class="subtitle">Experience transparent, secure, and cost-effective voting powered by Shardeum's revolutionary blockchain technology</p>
+        </div>
+
+        <!-- Status Card -->
+        <div class="card status-card" id="statusCard">
+            <h3>📱 Connect Your Wallet</h3>
+            <p>Connect MetaMask to join the decentralized voting revolution</p>
+            <button class="btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+        </div>
+
+        <!-- Why Shardeum Section -->
+        <div class="why-shardeum">
+            <h2 style="text-align: center; margin-bottom: 30px; font-size: 2.5rem;">⚡ Why Shardeum?</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 30px; opacity: 0.95;">
+                Shardeum is the world's first linearly scalable blockchain network that maintains decentralization and security while offering:
+            </p>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <h4 style="margin-bottom: 15px; font-size: 1.3rem;">💰 Ultra-Low Fees</h4>
+                    <p>Fixed transaction costs as low as $0.01, making voting accessible to everyone regardless of network congestion.</p>
+                </div>
+                <div class="benefit-card">
+                    <h4 style="margin-bottom: 15px; font-size: 1.3rem;">🚀 Linear Scalability</h4>
+                    <p>Network throughput increases proportionally with the number of nodes, ensuring fast transactions even during high demand.</p>
+                </div>
+                <div class="benefit-card">
+                    <h4 style="margin-bottom: 15px; font-size: 1.3rem;">🔒 Enhanced Security</h4>
+                    <p>Dynamic state sharding with atomic cross-shard composability ensures maximum security without compromising performance.</p>
+                </div>
+                <div class="benefit-card">
+                    <h4 style="margin-bottom: 15px; font-size: 1.3rem;">🌍 EVM Compatible</h4>
+                    <p>Deploy existing Ethereum smart contracts without modification, leveraging familiar tools and development workflows.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-content">
+            <!-- How It Works -->
+            <div class="card">
+                <h2 class="section-title">🔧 How It Works</h2>
+                <div style="space-y: 20px;">
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; font-size: 1.2rem;">1. Smart Contract Deployment</h4>
+                        <p>When you connect your wallet, VoteChain automatically deploys a voting smart contract to Shardeum. This contract manages all voting logic, ensuring transparency and immutability.</p>
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; font-size: 1.2rem;">2. Secure Vote Casting</h4>
+                        <p>Your vote is cryptographically signed and recorded on the blockchain. Each wallet address can only vote once, preventing manipulation and ensuring fair results.</p>
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; font-size: 1.2rem;">3. Real-Time Results</h4>
+                        <p>Vote counts are retrieved directly from the blockchain and displayed in real-time. All data is publicly verifiable and cannot be altered.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Use Cases -->
+            <div class="card">
+                <h2 class="section-title">🎯 Real-World Applications</h2>
+                <div style="space-y: 20px;">
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #4ecdc4; margin-bottom: 10px; font-size: 1.2rem;">🏛️ Governance Voting</h4>
+                        <p>DAOs and organizations can conduct transparent governance votes without relying on centralized platforms.</p>
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #4ecdc4; margin-bottom: 10px; font-size: 1.2rem;">🎓 Community Polls</h4>
+                        <p>Educational institutions and communities can gather authentic feedback with verifiable participation.</p>
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #4ecdc4; margin-bottom: 10px; font-size: 1.2rem;">🏆 Contest Judging</h4>
+                        <p>Fair and transparent judging for hackathons, competitions, and community awards with immutable results.</p>
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #4ecdc4; margin-bottom: 10px; font-size: 1.2rem;">💼 Corporate Decisions</h4>
+                        <p>Stakeholder voting for business decisions with complete audit trails and guaranteed privacy.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voting Section -->
+        <div class="card voting-section" id="votingCard" style="display: none;">
+            <h2 class="section-title">🏆 Developer's Choice Awards 2025</h2>
+            <p style="margin-bottom: 30px; font-size: 1.1rem; color: #666;">
+                Help shape the future of development! Cast your vote for the programming language that's driving innovation in 2025. 
+                Your vote is permanently recorded on Shardeum and contributes to a transparent, community-driven ranking.
+            </p>
+            
+            <div class="vote-option" data-option="0" onclick="selectOption(0)">
+                <div class="vote-info">
+                    <span class="vote-emoji">🐍</span>
+                    <div>
+                        <div class="vote-text">Python</div>
+                        <small style="color: #666;">The versatile powerhouse</small>
+                    </div>
+                </div>
+                <div class="vote-count" id="votes-0">0 votes</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-0" style="width: 0%"></div>
+            </div>
+
+            <div class="vote-option" data-option="1" onclick="selectOption(1)">
+                <div class="vote-info">
+                    <span class="vote-emoji">⚡</span>
+                    <div>
+                        <div class="vote-text">JavaScript</div>
+                        <small style="color: #666;">The web's backbone</small>
+                    </div>
+                </div>
+                <div class="vote-count" id="votes-1">0 votes</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-1" style="width: 0%"></div>
+            </div>
+
+            <div class="vote-option" data-option="2" onclick="selectOption(2)">
+                <div class="vote-info">
+                    <span class="vote-emoji">🦀</span>
+                    <div>
+                        <div class="vote-text">Rust</div>
+                        <small style="color: #666;">Memory-safe systems language</small>
+                    </div>
+                </div>
+                <div class="vote-count" id="votes-2">0 votes</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-2" style="width: 0%"></div>
+            </div>
+
+            <div class="vote-option" data-option="3" onclick="selectOption(3)">
+                <div class="vote-info">
+                    <span class="vote-emoji">💎</span>
+                    <div>
+                        <div class="vote-text">Solidity</div>
+                        <small style="color: #666;">Smart contract pioneer</small>
+                    </div>
+                </div>
+                <div class="vote-count" id="votes-3">0 votes</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-3" style="width: 0%"></div>
+            </div>
+
+            <button class="btn" id="voteBtn" onclick="castVote()" disabled>
+                Select an option to vote
+            </button>
+
+            <div id="messageArea"></div>
+
+            <div class="contract-address">
+                <strong>📄 Smart Contract Address:</strong>
+                <div id="contractAddress" style="margin-top: 10px;">Deploy contract first</div>
+                <small style="color: #666; margin-top: 10px; display: block;">
+                    Verify on Shardeum Explorer: explorer-liberty20.shardeum.org
+                </small>
+            </div>
+        </div>
+
+        <!-- Technical Features -->
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>🔐 Security Features</h3>
+                <p><strong>Immutable Records:</strong> Votes are permanently stored on-chain and cannot be altered or deleted.</p>
+                <p><strong>One Vote Per Wallet:</strong> Smart contract prevents double voting from the same address.</p>
+                <p><strong>Public Verification:</strong> Anyone can verify results by querying the blockchain directly.</p>
+                <p><strong>No Central Authority:</strong> No single entity controls the voting process or results.</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>⚙️ Technical Architecture</h3>
+                <p><strong>Frontend:</strong> Modern web interface with Web3 integration</p>
+                <p><strong>Smart Contract:</strong> Solidity-based voting logic with gas optimization</p>
+                <p><strong>Blockchain:</strong> Shardeum's EVM-compatible network</p>
+                <p><strong>Storage:</strong> Decentralized vote storage with instant retrieval</p>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div style="margin: 60px 0;">
+            <h2 style="text-align: center; color: white; font-size: 2.5rem; margin-bottom: 40px;">✨ Platform Features</h2>
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="icon">🚀</span>
+                    <h4>Instant Deployment</h4>
+                    <p>Deploy voting contracts with one click</p>
+                </div>
+                <div class="feature-item">
+                    <span class="icon">💸</span>
+                    <h4>Minimal Costs</h4>
+                    <p>Vote for under $0.01 per transaction</p>
+                </div>
+                <div class="feature-item">
+                    <span class="icon">🔍</span>
+                    <h4>Full Transparency</h4>
+                    <p>Every vote is publicly verifiable</p>
+                </div>
+                <div class="feature-item">
+                    <span class="icon">⚡</span>
+                    <h4>Lightning Fast</h4>
+                    <p>Sub-second transaction confirmation</p>
+                </div>
+                <div class="feature-item">
+                    <span class="icon">🌐</span>
+                    <h4>Global Access</h4>
+                    <p>Vote from anywhere in the world</p>
+                </div>
+                <div class="feature-item">
+                    <span class="icon">🛡️</span>
+                    <h4>Fraud Proof</h4>
+                    <p>Cryptographic security guarantees</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Stats -->
+        <div class="stats-row" id="demoStats">
+            <div class="stat-item">
+                <div class="stat-number" id="totalVotesDisplay">0</div>
+                <div class="stat-label">Total Votes Cast</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="contractInteractions">1</div>
+                <div class="stat-label">Contract Deployments</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">$0.01</div>
+                <div class="stat-label">Average Vote Cost</div>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="card" style="text-align: center; background: rgba(255,255,255,0.1); color: white; backdrop-filter: blur(15px);">
+            <h3 style="margin-bottom: 20px;">🚀 Ready to Build More?</h3>
+            <p style="margin-bottom: 20px;">This is just the beginning! VoteChain demonstrates the power of building on Shardeum's infinitely scalable network.</p>
+            <p><strong>Next Steps:</strong> Add features like vote delegation, time-locked voting, weighted votes, multi-choice polls, and integration with existing governance platforms.</p>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <p style="opacity: 0.8;">Built for Shardeum • Open Source • Community Driven</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contract ABI - Simple voting contract
+        const CONTRACT_ABI = [
+            {
+                "inputs": [{"name": "_options", "type": "string[]"}],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [{"name": "_optionIndex", "type": "uint256"}],
+                "name": "vote",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "", "type": "uint256"}],
+                "name": "votes",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getTotalVotes",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "", "type": "address"}],
+                "name": "hasVoted",
+                "outputs": [{"name": "", "type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Simple contract bytecode for a voting contract
+        const CONTRACT_BYTECODE = "0x608060405234801561001057600080fd5b506040516105a83803806105a88339818101604052810190610032919061018d565b60005b815181101561007c5760006002600083815260200190815260200160002081905550808061006290610294565b915050610035565b505061030f565b6000604051905090565b600080fd5b600080fd5b600080fd5b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6100e382610098565b810181811067ffffffffffffffff82111715610102576101016100a9565b5b80604052505050565b6000610115610083565b905061012182826100da565b919050565b600067ffffffffffffffff821115610141576101406100a9565b5b602082029050602081019050919050565b600080fd5b600080fd5b600067ffffffffffffffff82111561017757610176610156565b5b61018082610098565b9050602081019050919050565b6000815190506101a6818461015c565b92915050565b60006101bf6101ba84610126565b61010b565b905080838252602082019050602084028301858111156101e2576101e1610152565b5b835b8181101561020b57806101f78882610196565b8452602084019350506020810190506101e4565b5050509392505050565b600082601f83011261022a5761022961008d565b5b815161023a8482602086016101ac565b91505092915050565b60006020828403121561025957610258610087565b5b600082015167ffffffffffffffff8111156102775761027661008c565b5b61028384828501610215565b91505092915050565b600081905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006102d28261028c565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff820361030457610303610296565b5b600182019050919050565b61028a8061031e6000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c8063012074291461004657806371f7c95314610076578063c9d27afe14610094575b600080fd5b610060600480360381019061005b91906101a1565b6100c4565b60405161006d91906101dd565
